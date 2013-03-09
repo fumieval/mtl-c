@@ -16,15 +16,15 @@ execStateT :: Monad m => StateT s m a -> s -> m s
 execStateT m s = unStateT m s ((return.).flip const)
 
 instance Functor (StateT s m) where
-    fmap f m = StateT $ \s c -> unStateT m s (\a s' -> c (f a) s')
+    fmap f m = StateT $ \s c -> unStateT m s (\a s' -> s' `seq` c (f a) s')
 
 instance Applicative (StateT s m) where
     pure x = StateT $ \s c -> c x s
-    mf <*> ma = StateT $ \s c -> unStateT mf s (\f s' -> unStateT ma s' (\a s'' -> c (f a) s''))
+    mf <*> ma = StateT $ \s c -> unStateT mf s (\f s' -> s' `seq` unStateT ma s' (\a s'' -> c (f a) s''))
 
 instance Monad (StateT s m) where
     return x = StateT $ \s c -> c x s
-    m >>= k = StateT $ \s c -> unStateT m s (\a s' -> unStateT (k a) s' c)
+    m >>= k = StateT $ \s c -> unStateT m s (\a s' -> s' `seq` unStateT (k a) s' c)
 
 instance MonadState s (StateT s m) where
     get = state $ \s -> (s, s)
