@@ -1,4 +1,4 @@
-{-# LANGUAGE Rank2Types, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE Trustworthy, Rank2Types, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
 module Control.Monad.Writer.CPS where
 
 import Control.Monad.Writer.Class
@@ -6,6 +6,7 @@ import Control.Applicative
 import Control.Monad.Identity
 import Data.Monoid
 import Control.Monad.Trans
+import Unsafe.Coerce
 
 newtype WriterT w m a = WriterT { unWriterT :: forall r. (a -> w -> m r) -> m r }
 
@@ -16,6 +17,9 @@ runWriterT m = unWriterT m (\a w -> return (a, w))
 execWriterT :: Monad m => WriterT w m a -> m w
 execWriterT m = unWriterT m (const return)
 {-# INLINABLE execWriterT #-}
+
+mapWriterT :: (Monad m, Monad n) => (m (a, w) -> n (b, w)) -> WriterT w m a -> WriterT w n b
+mapWriterT t m = WriterT $ \c -> t (unWriterT m (\a w -> return (a, w))) >>= \(b, w') -> c b w'
 
 instance Functor (WriterT w m) where
     fmap f m = WriterT $ \c -> unWriterT m (c . f)
@@ -50,9 +54,9 @@ instance Monoid w => MonadTrans (WriterT w) where
 type Writer w = WriterT w Identity
 
 runWriter :: Writer w a -> (a, w)
-runWriter = runIdentity . runWriterT
+runWriter = (unsafeCoerce `asTypeOf` (runIdentity.)) runWriterT
 {-# INLINABLE runWriter #-}
 
 execWriter :: Writer w a -> w
-execWriter = runIdentity . execWriterT
+execWriter = (unsafeCoerce `asTypeOf` (runIdentity.)) execWriterT
 {-# INLINABLE execWriter #-}

@@ -14,5 +14,5 @@ cabal-version:       >=1.8
 
 library
   exposed-modules:     Control.Monad.Reader.CPS, Control.Monad.Writer.CPS, Control.Monad.State.CPS
-  -- other-modules:       
+  -- other-modules:
   build-depends:       base ==4.*, mtl ==2.*

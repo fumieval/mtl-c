@@ -1,9 +1,11 @@
-{-# LANGUAGE Rank2Types, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE Trustworthy, Rank2Types, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
 module Control.Monad.State.CPS where
 import Control.Monad.State.Class
 import Control.Applicative
 import Control.Monad.Identity
 import Control.Monad.Trans
+import Control.Monad.Morph
+import Unsafe.Coerce
 
 newtype StateT s m a = StateT { unStateT :: forall r. s -> (a -> s -> m r) -> m r }
 
@@ -18,6 +20,9 @@ evalStateT m s = unStateT m s $ \a _ -> return a
 execStateT :: Monad m => StateT s m a -> s -> m s
 execStateT m s = unStateT m s $ \_ s -> return s
 {-# INLINABLE execStateT #-}
+
+mapStateT :: (Monad m, Monad n) => (m (a, s) -> n (b, s)) -> StateT s m a -> StateT s n b
+mapStateT t m = StateT $ \s c -> t (unStateT m s (\a s -> return (a, s))) >>= \(b, s') -> c b s'
 
 instance Functor (StateT s m) where
     fmap f m = StateT $ \s c -> unStateT m s (c . f)
@@ -49,13 +54,13 @@ instance MonadTrans (StateT s) where
 type State s = StateT s Identity
 
 runState :: State s a -> s -> (a, s)
-runState m = runIdentity . runStateT m
+runState = (unsafeCoerce `asTypeOf` (runIdentity.)) . runStateT
 {-# INLINABLE runState #-}
 
 evalState :: State s a -> s -> a
-evalState m = runIdentity . evalStateT m
+evalState = (unsafeCoerce `asTypeOf` (runIdentity.)) . evalStateT
 {-# INLINABLE evalState #-}
 
 execState :: State s a -> s -> s
-execState m = runIdentity . execStateT m
+execState = (unsafeCoerce `asTypeOf` (runIdentity.)) . execStateT
 {-# INLINABLE execState #-}
