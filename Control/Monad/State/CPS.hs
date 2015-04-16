@@ -4,7 +4,6 @@ import Control.Monad.State.Class
 import Control.Applicative
 import Control.Monad.Identity
 import Control.Monad.Trans
-import Control.Monad.Morph
 import Unsafe.Coerce
 
 newtype StateT s m a = StateT { unStateT :: forall r. s -> (a -> s -> m r) -> m r }

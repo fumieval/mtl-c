@@ -1,5 +1,5 @@
 name:                mtl-c
-version:             0.0.0.1
+version:             0
 synopsis:            Monad transformers using continuation passing style
 description:         Monad transformers in CPS
 homepage:            https://github.com/fumieval/mtl-c
@@ -11,6 +11,10 @@ copyright:           Copyright (C) 2013 Fumiaki Kinoshita
 category:            Monads
 build-type:          Simple
 cabal-version:       >=1.8
+
+source-repository head
+  type: git
+  location: https://github.com/fumieval/objective.git
 
 library
   exposed-modules:     Control.Monad.Reader.CPS, Control.Monad.Writer.CPS, Control.Monad.State.CPS
