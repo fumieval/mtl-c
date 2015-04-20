@@ -1,6 +1,6 @@
 name:                mtl-c
-version:             0
-synopsis:            Monad transformers using continuation passing style
+version:             0.1
+synopsis:            Very strict CPS'd transformers
 description:         Monad transformers in CPS
 homepage:            https://github.com/fumieval/mtl-c
 license:             BSD3

@@ -1,5 +1,12 @@
-{-# LANGUAGE Trustworthy, Rank2Types, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
-module Control.Monad.Writer.CPS where
+{-# LANGUAGE Trustworthy, Rank2Types, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, BangPatterns #-}
+module Control.Monad.Writer.CPS (WriterT(..)
+    , runWriterT
+    , execWriterT
+    , mapWriterT
+    , Writer
+    , runWriter
+    , execWriter
+    , module Control.Monad.Writer.Class)where
 
 import Control.Monad.Writer.Class
 import Control.Applicative
@@ -28,14 +35,16 @@ instance Functor (WriterT w m) where
 instance Monoid w => Applicative (WriterT w m) where
     pure x = WriterT $ \c -> c x mempty
     {-# INLINABLE pure #-}
-    mf <*> ma = WriterT $ \c -> unWriterT mf $ \f w -> unWriterT ma $ \a w' -> c (f a) (mappend w w')
+    mf <*> ma = WriterT $ \c -> unWriterT mf $ \f !w -> unWriterT ma $ \a !w' -> c (f a) $! mappend w w'
     {-# INLINABLE (<*>) #-}
 
 instance Monoid w => Monad (WriterT w m) where
     return x = WriterT $ \c -> c x mempty
     {-# INLINABLE return #-}
-    m >>= k = WriterT $ \c -> unWriterT m $ \a w -> unWriterT (k a) $ \b w' -> c b (mappend w w')
+    m >>= k = WriterT $ \c -> unWriterT m $ \a !w -> unWriterT (k a) $ \b !w' -> c b $! mappend w w'
     {-# INLINABLE (>>=) #-}
+    m >> n = WriterT $ \c -> unWriterT m $ \_ !w -> unWriterT n $ \b !w' -> c b $! mappend w w'
+    {-# INLINABLE (>>) #-}
 
 instance Monoid w => MonadWriter w (WriterT w m) where
     writer (a, w) = WriterT $ \c -> c a w
@@ -55,8 +64,8 @@ type Writer w = WriterT w Identity
 
 runWriter :: Writer w a -> (a, w)
 runWriter = (unsafeCoerce `asTypeOf` (runIdentity.)) runWriterT
-{-# INLINABLE runWriter #-}
+{-# INLINE runWriter #-}
 
 execWriter :: Writer w a -> w
 execWriter = (unsafeCoerce `asTypeOf` (runIdentity.)) execWriterT
-{-# INLINABLE execWriter #-}
+{-# INLINE execWriter #-}

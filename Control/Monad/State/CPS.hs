@@ -1,5 +1,14 @@
-{-# LANGUAGE Trustworthy, Rank2Types, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
-module Control.Monad.State.CPS where
+{-# LANGUAGE Trustworthy, Rank2Types, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, BangPatterns #-}
+module Control.Monad.State.CPS (StateT(..)
+    , runStateT
+    , evalStateT
+    , execStateT
+    , mapStateT
+    , State
+    , runState
+    , evalState
+    , execState
+    , module Control.Monad.State.Class) where
 import Control.Monad.State.Class
 import Control.Applicative
 import Control.Monad.Identity
@@ -30,13 +39,15 @@ instance Functor (StateT s m) where
 instance Applicative (StateT s m) where
     pure x = StateT $ \s c -> c x s
     {-# INLINABLE pure #-}
-    mf <*> ma = StateT $ \s c -> unStateT mf s (\f s' -> unStateT ma s' (c . f))
+    mf <*> ma = StateT $ \s c -> unStateT mf s $ \f s' -> unStateT ma s' (c . f)
     {-# INLINABLE (<*>) #-}
 
 instance Monad (StateT s m) where
     return x = StateT $ \s c -> c x s
-    {-# INLINABLE return #-}
-    m >>= k = StateT $ \s c -> unStateT m s (\a s' -> unStateT (k a) s' c)
+    m >>= k = StateT $ \s c -> unStateT m s $ \a s' -> unStateT (k a) s' c
+    {-# INLINABLE (>>=) #-}
+    m >> n = StateT $ \s c -> unStateT m s $ \_ s' -> unStateT n s' c
+    {-# INLINABLE (>>) #-}
 
 instance MonadState s (StateT s m) where
     get = StateT $ \s c -> c s s
@@ -53,13 +64,13 @@ instance MonadTrans (StateT s) where
 type State s = StateT s Identity
 
 runState :: State s a -> s -> (a, s)
-runState = (unsafeCoerce `asTypeOf` (runIdentity.)) . runStateT
-{-# INLINABLE runState #-}
+runState = asTypeOf unsafeCoerce ((runIdentity .) .) runStateT
+{-# INLINE runState #-}
 
 evalState :: State s a -> s -> a
-evalState = (unsafeCoerce `asTypeOf` (runIdentity.)) . evalStateT
-{-# INLINABLE evalState #-}
+evalState = asTypeOf unsafeCoerce ((runIdentity .) .) evalStateT
+{-# INLINE evalState #-}
 
 execState :: State s a -> s -> s
-execState = (unsafeCoerce `asTypeOf` (runIdentity.)) . execStateT
-{-# INLINABLE execState #-}
+execState = asTypeOf unsafeCoerce ((runIdentity .) .) execStateT
+{-# INLINE execState #-}

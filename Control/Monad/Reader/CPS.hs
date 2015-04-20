@@ -1,15 +1,21 @@
 {-# LANGUAGE Trustworthy, Rank2Types, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
-module Control.Monad.Reader.CPS where
+module Control.Monad.Reader.CPS (ReaderT(..)
+    , runReaderT
+    , mapReaderT
+    , Reader
+    , runReader
+    , module Control.Monad.Reader.Class) where
 import Control.Monad.Reader.Class
 import Control.Applicative
 import Control.Monad.Identity
 import Control.Monad.Trans
+import Unsafe.Coerce
 
 newtype ReaderT r m a = ReaderT { unReaderT :: forall b. r -> (a -> m b) -> m b }
 
 runReaderT :: Monad m => ReaderT r m a -> r -> m a
 runReaderT m r = unReaderT m r return
-{-# INLINE runReaderT #-}
+{-# INLINABLE runReaderT #-}
 
 mapReaderT :: (Monad m, Monad n) => (m a -> n b) -> ReaderT r m a -> ReaderT r n b
 mapReaderT t m = ReaderT $ \r c -> t (unReaderT m r return) >>= c
@@ -29,6 +35,8 @@ instance Monad (ReaderT r m) where
     {-# INLINABLE return #-}
     m >>= k = ReaderT $ \r c -> unReaderT m r (\a -> unReaderT (k a) r c)
     {-# INLINABLE (>>=) #-}
+    m >> n = ReaderT $ \r c -> unReaderT m r (\_ -> unReaderT n r c)
+    {-# INLINABLE (>>) #-}
 
 instance MonadReader r (ReaderT r m) where
     ask = ReaderT $ \r c -> c r
@@ -45,5 +53,5 @@ instance MonadTrans (ReaderT r) where
 type Reader r = ReaderT r Identity
 
 runReader :: Reader r a -> r -> a
-runReader m r = runIdentity (runReaderT m r)
-{-# INLINABLE runReader #-}
+runReader = asTypeOf unsafeCoerce ((runIdentity .) .) runReaderT
+{-# INLINE runReader #-}
