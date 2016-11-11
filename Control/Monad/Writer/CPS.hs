@@ -1,4 +1,4 @@
-{-# LANGUAGE Trustworthy, Rank2Types, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, BangPatterns #-}
+{-# LANGUAGE Trustworthy, Rank2Types, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, BangPatterns, UndecidableInstances #-}
 module Control.Monad.Writer.CPS (WriterT(..)
     , runWriterT
     , execWriterT
@@ -9,11 +9,13 @@ module Control.Monad.Writer.CPS (WriterT(..)
     , module Control.Monad.Writer.Class)where
 
 import Control.Monad.Writer.Class
+import Control.Monad.State.Class
+import Control.Monad.Reader.Class
+import Control.Monad.IO.Class
 import Control.Applicative
 import Control.Monad.Identity
 import Data.Monoid
 import Control.Monad.Trans
-import Unsafe.Coerce
 
 newtype WriterT w m a = WriterT { unWriterT :: forall r. (a -> w -> m r) -> m r }
 
@@ -60,12 +62,26 @@ instance Monoid w => MonadTrans (WriterT w) where
     lift m = WriterT $ \c -> m >>= \a -> c a mempty
     {-# INLINABLE lift #-}
 
+instance (Monoid w, MonadState s m) => MonadState s (WriterT w m) where
+    get = lift get
+    {-# INLINABLE get #-}
+    put = lift . put
+    {-# INLINABLE put #-}
+
+instance (Monoid w, MonadReader r m) => MonadReader r (WriterT w m) where
+    ask = lift ask
+    local f m = WriterT $ \c -> local f (runWriterT m) >>= \(a, w) -> c a w
+
+instance (Monoid w, MonadIO m) => MonadIO (WriterT w m) where
+    liftIO = lift . liftIO
+    {-# INLINABLE liftIO #-}
+
 type Writer w = WriterT w Identity
 
 runWriter :: Writer w a -> (a, w)
-runWriter = (unsafeCoerce `asTypeOf` (runIdentity.)) runWriterT
+runWriter = runIdentity . runWriterT
 {-# INLINE runWriter #-}
 
 execWriter :: Writer w a -> w
-execWriter = (unsafeCoerce `asTypeOf` (runIdentity.)) execWriterT
+execWriter = runIdentity . execWriterT
 {-# INLINE execWriter #-}
