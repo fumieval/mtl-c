@@ -21,5 +21,6 @@ library
       , Control.Monad.Writer.CPS
       , Control.Monad.State.CPS
       , Control.Monad.RWS.CPS
+      , Control.Monad.Except.CPS
   -- other-modules:
   build-depends:       base ==4.*, mtl ==2.*, transformers
