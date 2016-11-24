@@ -14,7 +14,13 @@ import Control.Monad.State.Lazy as Lazy
 import Control.Monad.State.Strict as Strict
 import Control.Monad.State.CPS as CPS
 
+import Control.Monad.Except
+import Control.Monad.Except as Normal
+import Control.Monad.Except.CPS as CPS
+
 import Criterion.Main
+
+import Data.IORef
 
 askTest :: MonadReader Int m => (m () -> Int -> t) -> Int -> t
 askTest f n = f (replicateM_ n ask) 42
@@ -25,20 +31,29 @@ tellTest f n = f (forM_ [1..n] $ tell . Sum)
 modifyTest :: MonadState Int m => (m () -> Int -> t) -> Int -> t
 modifyTest f n = f (forM_ [1..n] $ \i -> modify (+ i)) 0
 
-main = defaultMain [
-   bgroup "State" [
-     bench "CPS"  $ nfIO $ modifyTest CPS.runStateT 100000
-     , bench "Strict"$ nfIO $ modifyTest Strict.runStateT 100000
-     , bench "Lazy"  $ nfIO $ modifyTest Lazy.runStateT 100000
-     ]
-  , bgroup "Writer" [
-     bench "CPS"  $ nfIO $ tellTest CPS.runWriterT 10000
-     , bench "Strict" $ nfIO $ tellTest Strict.runWriterT 10000
-     , bench "Lazy" $ nfIO $ tellTest Lazy.runWriterT 10000
-     ]
-  , bgroup "Reader" [
-     bench "CPS" $ nfIO $ askTest CPS.runReaderT 10000
-     , bench "Normal" $ nfIO $ askTest Normal.runReaderT 10000
-     ]
-  ]
+exceptTest :: MonadError (Product Int) m => (m () -> t) -> Int -> t
+exceptTest f n = f (forM_ [1..n] $ \i -> (pure i >>= \i' -> throwError (Product i') >> pure i')
+                                          `catchError` (\(Product e) -> pure (e*e)))
 
+main = do
+  ref <- newIORef 10000
+  defaultMain
+    [ bgroup "State" [
+       bench "CPS"       $ nfIO $ readIORef ref >>= modifyTest CPS.runStateT
+       , bench "Strict"  $ nfIO $ readIORef ref >>= modifyTest Strict.runStateT
+       , bench "Lazy"    $ nfIO $ readIORef ref >>= modifyTest Lazy.runStateT
+       ]
+    , bgroup "Writer" [
+       bench "CPS"       $ nfIO $ readIORef ref >>= tellTest CPS.runWriterT
+       , bench "Strict"  $ nfIO $ readIORef ref >>= tellTest Strict.runWriterT
+       , bench "Lazy"    $ nfIO $ readIORef ref >>= tellTest Lazy.runWriterT
+       ]
+    , bgroup "Reader" [
+       bench "CPS"       $ nfIO $ readIORef ref >>= askTest CPS.runReaderT
+       , bench "Normal"  $ nfIO $ readIORef ref >>= askTest Normal.runReaderT
+       ]
+    , bgroup "Except"
+        [ bench "CPS"    $ nfIO $ readIORef ref >>= exceptTest CPS.runExceptT
+        , bench "Normal" $ nfIO $ readIORef ref >>= exceptTest Normal.runExceptT
+        ]
+    ]
