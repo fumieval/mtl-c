@@ -23,3 +23,17 @@ library
       , Control.Monad.RWS.CPS
   -- other-modules:
   build-depends:       base ==4.*, mtl ==2.*, transformers
+
+
+benchmark benchmarks
+    Default-Language: Haskell2010
+    Type:             exitcode-stdio-1.0
+    HS-Source-Dirs:   benchmark
+    Main-Is:          benchmark.hs
+    GHC-Options:     -O2 -Wall -rtsopts -fno-warn-unused-do-bind
+
+    Build-Depends:
+        base         >= 4       && < 5  ,
+        criterion    >= 0.6.2.1 && < 1.2,
+        mtl          >= 2.0     && < 3.0,
+        mtl-c

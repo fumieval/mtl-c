@@ -14,6 +14,11 @@ import Control.Monad.State.Lazy as Lazy
 import Control.Monad.State.Strict as Strict
 import Control.Monad.State.CPS as CPS
 
+import Control.Monad.RWS.Class
+import Control.Monad.RWS.Lazy as Lazy
+import Control.Monad.RWS.Strict as Strict
+import Control.Monad.RWS.CPS as CPS
+
 import Criterion.Main
 
 askTest :: MonadReader Int m => (m () -> Int -> t) -> Int -> t
@@ -24,6 +29,9 @@ tellTest f n = f (forM_ [1..n] $ tell . Sum)
 
 modifyTest :: MonadState Int m => (m () -> Int -> t) -> Int -> t
 modifyTest f n = f (forM_ [1..n] $ \i -> modify (+ i)) 0
+
+rwstTest :: MonadRWS Int (Sum Int) Int m => (m () -> Int -> Int -> t) -> Int -> t
+rwstTest f n = f (forM_ [1..n] $ \i -> ask >> tell (Sum i) >> modify (+i)) 42 0
 
 main = defaultMain [
    bgroup "State" [
@@ -40,5 +48,9 @@ main = defaultMain [
      bench "CPS" $ nfIO $ askTest CPS.runReaderT 10000
      , bench "Normal" $ nfIO $ askTest Normal.runReaderT 10000
      ]
+  , bgroup "RWS" [
+      bench "CPS"  $ nfIO $ rwstTest CPS.runRWST 10000
+      , bench "Strict" $ nfIO $ rwstTest Strict.runRWST 10000
+      , bench "Lazy" $ nfIO $ rwstTest Lazy.runRWST 10000
+      ]
   ]
-
