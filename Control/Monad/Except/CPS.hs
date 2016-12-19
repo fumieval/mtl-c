@@ -124,7 +124,7 @@ instance (MonadZip m) => MonadZip (ExceptT e m) where
 
 #if MIN_VERSION_base(4,9,0)
 instance Fail.MonadFail m => Fail.MonadFail (ExceptT e m) where
-  fail x = ExceptT $ \err suc -> fail x
+  fail x = ExceptT $ \err suc -> Fail.fail x
 #endif
 
 runExceptT :: Applicative m => ExceptT e m a -> m (Either e a)
